@@ -1,0 +1,6 @@
+ENV['VAGRANT_DEFAULT_PROVIDER'] = 'virtualbox'
+Vagrant.configure(2) do |config|
+  config.vm.box = "iliya/centos7"
+  config.vm.network "private_network", type: "dhcp"
+  config.vm.hostname = "iliya-node1.livepopuli.com"
+end

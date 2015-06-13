@@ -1,5 +1,7 @@
 ################# VAGRANT ###################
 
+vagrant plugin install vagrant-vbox-snapshot
+
 vagrant package --output centos7.box
 
 vagrant box add --provider virtualbox --name iliya/centos7 /home/iliya/repository/ChefEssentials/centos7.box
@@ -11,6 +13,7 @@ ENV['VAGRANT_DEFAULT_PROVIDER'] = 'virtualbox'
 Vagrant.configure(2) do |config|
   config.vm.box = "iliya/centos7"
   config.vm.network "private_network", type: "dhcp"
+  config.vm.hostname = "iliya-chef.livepopuli.com"
 end
 
 vagrant up
@@ -32,6 +35,13 @@ rvm install 2.2.2
 # create the gemset named chef for your installation of Ruby 2.2.2 and then set it as the active gemset
 rvm use 2.2.2@chef --create
 rvm gemset list
+
+rvm use 2.2.2@chef --default # doesn't work for some reason
+# instead use the following approach
+cd /vagrant/.chef
+echo 2.2.2 > .ruby-version
+echo chef > .ruby-gemset
+
 rvm gemdir
 
 ################## CHEF Solo ##################
@@ -39,8 +49,6 @@ rvm gemdir
 gem install chef
 
 ################## CHEF Server ##################
-
-Update /etc/hostname and /etc/hosts files with your FQDN
 
 wget https://web-dl.packagecloud.io/chef/stable/packages/el/5/chef-server-core-12.0.8-1.el5.x86_64.rpm
 
@@ -57,11 +65,11 @@ cat << EOF > /vagrant/.chef/knife.rb
 current_dir = File.dirname(__FILE__)
 log_level                :info
 log_location             STDOUT
-node_name                'iliya'
+node_name                "iliya"
 client_key               "#{current_dir}/iliya.pem"
 validation_client_name   'livepopuli'
 validation_key           "#{current_dir}/livepopuli-validator.pem"
-chef_server_url          'https://iliya-chef.livepopuli.com:443/organizations/livepopuli'
+chef_server_url          "https://iliya-chef.livepopuli.com:443/organizations/livepopuli"
 syntax_check_cache_path  "#{current_dir}/syntax_check_cache"
 cookbook_path            ["#{current_dir}/../cookbooks"]
 EOF
@@ -80,3 +88,35 @@ knife ssl check
 # knife ssl fetch
 
 knife client list
+
+################## CHEF Create Role ##################
+
+knife role create -d postgresql_server
+knife role list
+
+# set sublime as default editor
+export EDITOR="$(which sublime3) --wait"
+
+cd cookbook
+knife cookbook site download postgresql
+knife cookbook site download build-essential
+knife cookbook site download yum
+knife cookbook site download apt
+knife cookbook site download chef-sugar
+knife cookbook site download openssl
+
+find . -name "*.tar.gz" | xargs -I'{}' tar -zxvf '{}' && rm -f *.tar.gz
+
+knife cookbook upload -o . apt openssl yum build-essential postgresql chef-sugar
+
+
+##################        Berks       ##################
+
+cd <some_cookbook>
+berks init .
+# bundle install
+berks install
+berks upload --no-ssl-verify
+
+################## CHEF Node Bootstraping ##################
+

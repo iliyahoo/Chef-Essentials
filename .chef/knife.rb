@@ -7,3 +7,4 @@ validation_client_name   'livepopuli'
 validation_key           "#{current_dir}/livepopuli-validator.pem"
 chef_server_url          'https://iliya-chef.livepopuli.com:443/organizations/livepopuli'
 syntax_check_cache_path  "#{current_dir}/syntax_check_cache"
+cookbook_path            ["#{current_dir}/../cookbooks"]

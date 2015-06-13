@@ -1,5 +1,7 @@
 *.rpm
 .vagrant/
 .chef/*.pem
+*.box
 .chef/trusted_certs/
+*.tar.gz
 
