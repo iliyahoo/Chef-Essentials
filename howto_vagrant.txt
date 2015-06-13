@@ -1,0 +1,82 @@
+################# VAGRANT ###################
+
+vagrant package --output centos7.box
+
+vagrant box add --provider virtualbox --name iliya/centos7 /home/iliya/repository/ChefEssentials/centos7.box
+
+vagrant init
+
+grep -v "^ \+#\|^#\|^$" Vagrantfile
+ENV['VAGRANT_DEFAULT_PROVIDER'] = 'virtualbox'
+Vagrant.configure(2) do |config|
+  config.vm.box = "iliya/centos7"
+  config.vm.network "private_network", type: "dhcp"
+end
+
+vagrant up
+vagrant ssh
+
+################# RUBY ###################
+
+# Install Ruby RVM
+gpg2 --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3
+curl -sSL https://get.rvm.io | bash -s stable
+
+grep rvm ~/.bashrc || { echo 'source /usr/local/rvm/scripts/rvm' >> ~/.bashrc ; source ~/.bashrc ; }
+
+# Install Ruby
+rvm list known
+rvm install 2.2.2
+# rvm docs generate-ri
+
+# create the gemset named chef for your installation of Ruby 2.2.2 and then set it as the active gemset
+rvm use 2.2.2@chef --create
+rvm gemset list
+rvm gemdir
+
+################## CHEF Solo ##################
+
+gem install chef
+
+################## CHEF Server ##################
+
+Update /etc/hostname and /etc/hosts files with your FQDN
+
+wget https://web-dl.packagecloud.io/chef/stable/packages/el/5/chef-server-core-12.0.8-1.el5.x86_64.rpm
+
+sudo yum localinstall chef-server-core-12.0.8-1.el5.x86_64.rpm
+
+sudo chef-server-ctl reconfigure
+sudo chef-server-ctl status
+
+sudo chef-server-ctl user-create iliya Iliya Strakovich iliya.strakovich@livepopuli.com PASSWORD -f /vagrant/iliya.pem
+
+sudo chef-server-ctl org-create livepopuli "LivePopuli, Inc." --association_user iliya -f /vagrant/.chef/livepopuli-validator.pem
+
+cat << EOF > /vagrant/.chef/knife.rb
+current_dir = File.dirname(__FILE__)
+log_level                :info
+log_location             STDOUT
+node_name                'iliya'
+client_key               "#{current_dir}/iliya.pem"
+validation_client_name   'livepopuli'
+validation_key           "#{current_dir}/livepopuli-validator.pem"
+chef_server_url          'https://iliya-chef.livepopuli.com:443/organizations/livepopuli'
+syntax_check_cache_path  "#{current_dir}/syntax_check_cache"
+cookbook_path            ["#{current_dir}/../cookbooks"]
+EOF
+
+################## CHEF Workstation ##################
+
+wget https://opscode-omnibus-packages.s3.amazonaws.com/el/6/x86_64/chefdk-0.6.0-1.el6.x86_64.rpm
+sudo yum localinstall chefdk-0.6.0-1.el6.x86_64.rpm
+chef verify
+
+echo 'eval "$(chef shell-init bash)"' >> ~/.bash_profile
+source ~/.bash_profile
+
+cd /vagrant/.chef/
+knife ssl check
+# knife ssl fetch
+
+knife client list

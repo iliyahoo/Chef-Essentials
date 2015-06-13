@@ -1,0 +1,5 @@
+*.rpm
+.vagrant/
+.chef/
+!.chef/knife.rb
+
