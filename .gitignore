@@ -1,5 +1,5 @@
 *.rpm
 .vagrant/
-.chef/
-!.chef/knife.rb
+.chef/*.pem
+.chef/trusted_certs/
 
